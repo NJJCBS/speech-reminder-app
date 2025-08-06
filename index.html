@@ -38,21 +38,17 @@
   <button id="add-btn">➕ Add Reminder</button>
   <div id="list"></div>
 
-  <!-- 1. Load Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    // 2. Your Supabase details:
     const SUPABASE_URL     = 'https://mcujqzgxxiegogdwxkkv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jdWpxemd4eGllZ29nZHd4a2t2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MTkzNzAsImV4cCI6MjA3MDA5NTM3MH0.QOTiNjGDm1dXoPjHApeoN1jOmjSQ38O-tTHaXHFHdLY';
 
-    // 3. Initialize Supabase
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const list   = document.getElementById('list');
     const addBtn = document.getElementById('add-btn');
 
-    // Build a bubble DOM node
     function makeBubble(data) {
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
@@ -69,22 +65,26 @@
       content.innerText = data.content;
       bubble.appendChild(content);
 
-      // toggle open/closed
       title.addEventListener('click', () => bubble.classList.toggle('open'));
-      // save on any edit
       [title, content].forEach(el => el.addEventListener('input', saveReminders));
 
       return bubble;
     }
 
-    // Load from Supabase
     async function loadReminders() {
+      // ← clear out old bubbles so nothing ever duplicates
+      list.innerHTML = '';
+
       const { data, error } = await supabaseClient
         .from('reminders')
         .select('*')
         .order('id');
-      if (error) return console.error(error);
-      list.innerHTML = '';
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
       if (data.length === 0) {
         list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
       } else {
@@ -92,33 +92,23 @@
       }
     }
 
-    // Save all bubbles back to Supabase
     async function saveReminders() {
       const arr = Array.from(list.children).map(b => ({
         title:   b.querySelector('.title').innerText,
         content: b.querySelector('.content').innerText
       }));
-      // wipe old rows
+
+      // delete all old rows and insert the up-to-date list
       await supabaseClient.from('reminders').delete().gt('id', 0);
-      // insert current state
       await supabaseClient.from('reminders').insert(arr);
     }
 
-    // Add-button handler
     addBtn.addEventListener('click', () => {
       list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
       saveReminders();
     });
 
-    // Real-time updates (anywhere someone else changes it)
-    supabaseClient
-      .channel('reminders-ch')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' },
-          () => loadReminders()
-      )
-      .subscribe();
-
-    // Initial load
+    // manual-sync: load on page load
     loadReminders();
   </script>
 </body>
