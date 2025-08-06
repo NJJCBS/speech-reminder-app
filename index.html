@@ -11,7 +11,7 @@
       max-width: 600px;
       margin: auto;
     }
-    #add-btn {
+    #add-btn, #refresh-btn {
       display: inline-block;
       margin-bottom: 1rem;
       padding: 0.5rem 1rem;
@@ -21,8 +21,12 @@
       border: none;
       border-radius: 4px;
     }
+    #refresh-btn {
+      margin-left: 0.5rem;
+      background: #555;
+    }
     .bubble {
-      position: relative;            /* allow delete button positioning */
+      position: relative;
       border: 1px solid #ccc;
       border-radius: 20px;
       padding: 0.5rem 1rem;
@@ -33,7 +37,6 @@
     .title { cursor: pointer; font-weight: bold; outline: none; }
     .content { margin-top: 0.5rem; display: none; outline: none; }
     .bubble.open .content { display: block; }
-
     .delete-btn {
       position: absolute;
       top: 0.4rem;
@@ -47,6 +50,7 @@
 </head>
 <body>
   <button id="add-btn">➕ Add Reminder</button>
+  <button id="refresh-btn">🔄 Refresh</button>
   <div id="list"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -59,6 +63,7 @@
 
     const list   = document.getElementById('list');
     const addBtn = document.getElementById('add-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
 
     function makeBubble(data) {
       const bubble = document.createElement('div');
@@ -90,14 +95,14 @@
 
       // toggle open/closed
       title.addEventListener('click', () => bubble.classList.toggle('open'));
-      // save on any edit
+      // save on edit
       [title, content].forEach(el => el.addEventListener('input', saveReminders));
 
       return bubble;
     }
 
     async function loadReminders() {
-      list.innerHTML = '';  // clear existing so no duplicates
+      list.innerHTML = '';  // clear existing so nothing ever duplicates
 
       const { data, error } = await supabaseClient
         .from('reminders')
@@ -124,12 +129,18 @@
       await supabaseClient.from('reminders').insert(arr);
     }
 
+    // Add new bubble
     addBtn.addEventListener('click', () => {
       list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
       saveReminders();
     });
 
-    // manual sync on load
+    // Hard-refresh button
+    refreshBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    // Load on page load
     loadReminders();
   </script>
 </body>
