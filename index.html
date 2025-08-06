@@ -16,15 +16,12 @@
       margin-bottom: 1rem;
       padding: 0.5rem 1rem;
       cursor: pointer;
-      background: #0070f3;
       color: white;
       border: none;
       border-radius: 4px;
     }
-    #refresh-btn {
-      margin-left: 0.5rem;
-      background: #555;
-    }
+    #add-btn { background: #0070f3; }
+    #refresh-btn { background: #555; margin-left: .5rem; }
     .bubble {
       position: relative;
       border: 1px solid #ccc;
@@ -61,86 +58,91 @@
     const { createClient } = supabase;
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const list   = document.getElementById('list');
-    const addBtn = document.getElementById('add-btn');
+    const list       = document.getElementById('list');
+    const addBtn     = document.getElementById('add-btn');
     const refreshBtn = document.getElementById('refresh-btn');
 
-    function makeBubble(data) {
+    // build a bubble, storing its row-id in dataset
+    function makeBubble(r) {
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
+      bubble.dataset.id = r.id;
 
-      // delete button
       const del = document.createElement('span');
       del.className = 'delete-btn';
       del.innerText = '✕';
       bubble.appendChild(del);
-      del.addEventListener('click', () => {
+      del.addEventListener('click', async () => {
+        await supabaseClient
+          .from('reminders')
+          .delete()
+          .eq('id', r.id);
         bubble.remove();
-        saveReminders();
       });
 
-      // title
       const title = document.createElement('div');
       title.className = 'title';
       title.contentEditable = 'true';
-      title.innerText = data.title;
+      title.innerText = r.title;
       bubble.appendChild(title);
 
-      // content
       const content = document.createElement('div');
       content.className = 'content';
       content.contentEditable = 'true';
-      content.innerText = data.content;
+      content.innerText = r.content;
       bubble.appendChild(content);
 
-      // toggle open/closed
       title.addEventListener('click', () => bubble.classList.toggle('open'));
-      // save on edit
-      [title, content].forEach(el => el.addEventListener('input', saveReminders));
+      [title, content].forEach(el =>
+        el.addEventListener('input', debounce(async () => {
+          await supabaseClient
+            .from('reminders')
+            .update({
+              title:   title.innerText,
+              content: content.innerText
+            })
+            .eq('id', r.id);
+        }, 500))
+      );
 
       return bubble;
     }
 
-    async function loadReminders() {
-      list.innerHTML = '';  // clear existing so nothing ever duplicates
+    // simple debounce helper
+    function debounce(fn, ms) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
 
+    // fetch & render once
+    async function loadReminders() {
+      list.innerHTML = '';
       const { data, error } = await supabaseClient
         .from('reminders')
         .select('*')
         .order('id');
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-      if (data.length === 0) {
-        list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
-      } else {
-        data.forEach(r => list.appendChild(makeBubble(r)));
-      }
+      if (error) return console.error(error);
+      data.forEach(r => list.appendChild(makeBubble(r)));
     }
 
-    async function saveReminders() {
-      const arr = Array.from(list.children).map(b => ({
-        title:   b.querySelector('.title').innerText,
-        content: b.querySelector('.content').innerText
-      }));
-      await supabaseClient.from('reminders').delete().gt('id', 0);
-      await supabaseClient.from('reminders').insert(arr);
-    }
-
-    // Add new bubble
-    addBtn.addEventListener('click', () => {
-      list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
-      saveReminders();
+    // on “Add Reminder” click: insert row, then render it
+    addBtn.addEventListener('click', async () => {
+      const { data, error } = await supabaseClient
+        .from('reminders')
+        .insert({ title: 'New reminder', content: 'Talk points…' })
+        .select()
+        .single();
+      if (error) return console.error(error);
+      list.appendChild(makeBubble(data));
     });
 
-    // Hard-refresh button
-    refreshBtn.addEventListener('click', () => {
-      window.location.reload();
-    });
+    // hard reload
+    refreshBtn.addEventListener('click', () => window.location.reload());
 
-    // Load on page load
+    // initial load
     loadReminders();
   </script>
 </body>
