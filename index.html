@@ -29,33 +29,30 @@
       transition: background 0.2s;
     }
     .bubble:hover { background: #f9f9f9; }
-    .bubble .title,
-    .bubble .content {
-      outline: none;
-    }
-    .bubble .title {
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .bubble .content {
-      margin-top: 0.5rem;
-      display: none;
-    }
-    .bubble.open .content {
-      display: block;
-    }
+    .title { cursor: pointer; font-weight: bold; outline: none; }
+    .content { margin-top: 0.5rem; display: none; outline: none; }
+    .bubble.open .content { display: block; }
   </style>
 </head>
 <body>
   <button id="add-btn">➕ Add Reminder</button>
   <div id="list"></div>
 
+  <!-- 1. Load Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    const STORAGE_KEY = 'reminders';
-    const list = document.getElementById('list');
+    // 2. Your Supabase details:
+    const SUPABASE_URL     = 'https://mcujqzgxxiegogdwxkkv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jdWpxemd4eGllZ29nZHd4a2t2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MTkzNzAsImV4cCI6MjA3MDA5NTM3MH0.QOTiNjGDm1dXoPjHApeoN1jOmjSQ38O-tTHaXHFHdLY';
+
+    // 3. Initialize Supabase
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const list   = document.getElementById('list');
     const addBtn = document.getElementById('add-btn');
 
-    // Build a bubble element with save-hooks
+    // Build a bubble DOM node
     function makeBubble(data) {
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
@@ -72,37 +69,39 @@
       content.innerText = data.content;
       bubble.appendChild(content);
 
-      // toggle on title click
-      title.addEventListener('click', () => {
-        bubble.classList.toggle('open');
-      });
-      // save on edit
-      [title, content].forEach(el =>
-        el.addEventListener('input', saveReminders)
-      );
+      // toggle open/closed
+      title.addEventListener('click', () => bubble.classList.toggle('open'));
+      // save on any edit
+      [title, content].forEach(el => el.addEventListener('input', saveReminders));
 
       return bubble;
     }
 
-    // Load from localStorage
-    function loadReminders() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      let arr = [];
-      try { arr = raw ? JSON.parse(raw) : []; }
-      catch(e){ arr = []; }
-      if (arr.length === 0) {
-        arr.push({ title: 'New reminder', content: 'Talk points…' });
+    // Load from Supabase
+    async function loadReminders() {
+      const { data, error } = await supabaseClient
+        .from('reminders')
+        .select('*')
+        .order('id');
+      if (error) return console.error(error);
+      list.innerHTML = '';
+      if (data.length === 0) {
+        list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
+      } else {
+        data.forEach(r => list.appendChild(makeBubble(r)));
       }
-      arr.forEach(data => list.appendChild(makeBubble(data)));
     }
 
-    // Gather and save all bubbles
-    function saveReminders() {
+    // Save all bubbles back to Supabase
+    async function saveReminders() {
       const arr = Array.from(list.children).map(b => ({
-        title: b.querySelector('.title').innerText,
+        title:   b.querySelector('.title').innerText,
         content: b.querySelector('.content').innerText
       }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+      // wipe old rows
+      await supabaseClient.from('reminders').delete().gt('id', 0);
+      // insert current state
+      await supabaseClient.from('reminders').insert(arr);
     }
 
     // Add-button handler
@@ -111,7 +110,15 @@
       saveReminders();
     });
 
-    // On load
+    // Real-time updates (anywhere someone else changes it)
+    supabaseClient
+      .channel('reminders-ch')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' },
+          () => loadReminders()
+      )
+      .subscribe();
+
+    // Initial load
     loadReminders();
   </script>
 </body>
