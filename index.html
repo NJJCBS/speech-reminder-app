@@ -22,6 +22,7 @@
     }
     #add-btn { background: #0070f3; }
     #refresh-btn { background: #555; margin-left: .5rem; }
+
     .bubble {
       position: relative;
       border: 1px solid #ccc;
@@ -32,8 +33,13 @@
     }
     .bubble:hover { background: #f9f9f9; }
     .title { cursor: pointer; font-weight: bold; outline: none; }
-    .content { margin-top: 0.5rem; display: none; outline: none; }
+    .content {
+      display: none;
+      margin-top: 1rem;    /* ← more space before the content row */
+      outline: none;
+    }
     .bubble.open .content { display: block; }
+
     .delete-btn {
       position: absolute;
       top: 0.4rem;
@@ -120,7 +126,6 @@
     }
 
     addBtn.addEventListener('click', async () => {
-      // 🎯 Updated defaults here:
       const { data, error } = await supabaseClient
         .from('reminders')
         .insert({ title: 'Title', content: 'Enter text' })
