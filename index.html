@@ -26,20 +26,20 @@
       border-radius: 20px;
       padding: 0.5rem 1rem;
       margin-bottom: 0.5rem;
-      position: relative;
       transition: background 0.2s;
     }
-    .bubble:hover {
-      background: #f9f9f9;
+    .bubble:hover { background: #f9f9f9; }
+    .bubble .title,
+    .bubble .content {
+      outline: none;
     }
     .bubble .title {
       cursor: pointer;
-      outline: none;
+      font-weight: bold;
     }
     .bubble .content {
       margin-top: 0.5rem;
       display: none;
-      outline: none;
     }
     .bubble.open .content {
       display: block;
@@ -51,41 +51,68 @@
   <div id="list"></div>
 
   <script>
+    const STORAGE_KEY = 'reminders';
     const list = document.getElementById('list');
     const addBtn = document.getElementById('add-btn');
 
-    function makeBubble(titleText = 'New reminder', bodyText = 'Talk points…') {
+    // Build a bubble element with save-hooks
+    function makeBubble(data) {
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
 
       const title = document.createElement('div');
       title.className = 'title';
       title.contentEditable = 'true';
-      title.innerText = titleText;
+      title.innerText = data.title;
       bubble.appendChild(title);
 
       const content = document.createElement('div');
       content.className = 'content';
       content.contentEditable = 'true';
-      content.innerText = bodyText;
+      content.innerText = data.content;
       bubble.appendChild(content);
 
       // toggle on title click
       title.addEventListener('click', () => {
         bubble.classList.toggle('open');
       });
+      // save on edit
+      [title, content].forEach(el =>
+        el.addEventListener('input', saveReminders)
+      );
 
       return bubble;
     }
 
-    // Add initial bubble
+    // Load from localStorage
+    function loadReminders() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      let arr = [];
+      try { arr = raw ? JSON.parse(raw) : []; }
+      catch(e){ arr = []; }
+      if (arr.length === 0) {
+        arr.push({ title: 'New reminder', content: 'Talk points…' });
+      }
+      arr.forEach(data => list.appendChild(makeBubble(data)));
+    }
+
+    // Gather and save all bubbles
+    function saveReminders() {
+      const arr = Array.from(list.children).map(b => ({
+        title: b.querySelector('.title').innerText,
+        content: b.querySelector('.content').innerText
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    }
+
+    // Add-button handler
     addBtn.addEventListener('click', () => {
-      const bubble = makeBubble();
-      list.appendChild(bubble);
+      list.appendChild(makeBubble({ title: 'New reminder', content: 'Talk points…' }));
+      saveReminders();
     });
 
-    // create one by default
-    addBtn.click();
+    // On load
+    loadReminders();
   </script>
 </body>
 </html>
