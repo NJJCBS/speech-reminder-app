@@ -62,7 +62,6 @@
     const addBtn     = document.getElementById('add-btn');
     const refreshBtn = document.getElementById('refresh-btn');
 
-    // build a bubble, storing its row-id in dataset
     function makeBubble(r) {
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
@@ -73,10 +72,7 @@
       del.innerText = '✕';
       bubble.appendChild(del);
       del.addEventListener('click', async () => {
-        await supabaseClient
-          .from('reminders')
-          .delete()
-          .eq('id', r.id);
+        await supabaseClient.from('reminders').delete().eq('id', r.id);
         bubble.remove();
       });
 
@@ -97,10 +93,7 @@
         el.addEventListener('input', debounce(async () => {
           await supabaseClient
             .from('reminders')
-            .update({
-              title:   title.innerText,
-              content: content.innerText
-            })
+            .update({ title: title.innerText, content: content.innerText })
             .eq('id', r.id);
         }, 500))
       );
@@ -108,7 +101,6 @@
       return bubble;
     }
 
-    // simple debounce helper
     function debounce(fn, ms) {
       let t;
       return (...args) => {
@@ -117,7 +109,6 @@
       };
     }
 
-    // fetch & render once
     async function loadReminders() {
       list.innerHTML = '';
       const { data, error } = await supabaseClient
@@ -128,21 +119,19 @@
       data.forEach(r => list.appendChild(makeBubble(r)));
     }
 
-    // on “Add Reminder” click: insert row, then render it
     addBtn.addEventListener('click', async () => {
+      // 🎯 Updated defaults here:
       const { data, error } = await supabaseClient
         .from('reminders')
-        .insert({ title: 'New reminder', content: 'Talk points…' })
+        .insert({ title: 'Title', content: 'Enter text' })
         .select()
         .single();
       if (error) return console.error(error);
       list.appendChild(makeBubble(data));
     });
 
-    // hard reload
     refreshBtn.addEventListener('click', () => window.location.reload());
 
-    // initial load
     loadReminders();
   </script>
 </body>
