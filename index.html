@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Speech Reminder App</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    #add-btn {
+      display: inline-block;
+      margin-bottom: 1rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background: #0070f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .bubble {
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      margin-bottom: 0.5rem;
+      position: relative;
+      transition: background 0.2s;
+    }
+    .bubble:hover {
+      background: #f9f9f9;
+    }
+    .bubble .title {
+      cursor: pointer;
+      outline: none;
+    }
+    .bubble .content {
+      margin-top: 0.5rem;
+      display: none;
+      outline: none;
+    }
+    .bubble.open .content {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <button id="add-btn">➕ Add Reminder</button>
+  <div id="list"></div>
+
+  <script>
+    const list = document.getElementById('list');
+    const addBtn = document.getElementById('add-btn');
+
+    function makeBubble(titleText = 'New reminder', bodyText = 'Talk points…') {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.contentEditable = 'true';
+      title.innerText = titleText;
+      bubble.appendChild(title);
+
+      const content = document.createElement('div');
+      content.className = 'content';
+      content.contentEditable = 'true';
+      content.innerText = bodyText;
+      bubble.appendChild(content);
+
+      // toggle on title click
+      title.addEventListener('click', () => {
+        bubble.classList.toggle('open');
+      });
+
+      return bubble;
+    }
+
+    // Add initial bubble
+    addBtn.addEventListener('click', () => {
+      const bubble = makeBubble();
+      list.appendChild(bubble);
+    });
+
+    // create one by default
+    addBtn.click();
+  </script>
+</body>
+</html>
